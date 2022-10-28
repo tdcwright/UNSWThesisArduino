@@ -27,7 +27,7 @@ ManualController manualControl(&positionController,
 
 DualSerial dualSerial(&Serial, &Serial1);
 
-byte heartbeat = 0;
+unsigned long heartbeatTime = 0;
 bool currHeatbeatState = false;
 
 void setup()
@@ -55,14 +55,13 @@ void loop()
 {
   manualControl.runController();
 
-  // if (heartbeat > 100)
-  // {
-  //   currHeatbeatState = !currHeatbeatState;
-  //   digitalWrite(LED_BUILTIN, currHeatbeatState ? HIGH : LOW);
-  //   heartbeat = 0;
-  // }
-  // heartbeat++;
+  unsigned long currTime = millis();
+  if (currTime > heartbeatTime + 1000)
+  {
+    heartbeatTime = currTime;
+    currHeatbeatState = !currHeatbeatState;
+    digitalWrite(LED_BUILTIN, currHeatbeatState ? HIGH : LOW);
+  }
 
-  // Serial.print("Bluetooth Connected: ");Serial.println(bluetoothChip.connected());
   delay(10);
 }
