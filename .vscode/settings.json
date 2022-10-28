@@ -1,0 +1,21 @@
+{
+  "files.associations": {
+    "cctype": "cpp",
+    "cmath": "cpp",
+    "cstdarg": "cpp",
+    "cstdio": "cpp",
+    "cstdlib": "cpp",
+    "cstring": "cpp",
+    "exception": "cpp",
+    "limits": "cpp",
+    "*.tcc": "cpp",
+    "cinttypes": "cpp",
+    "cstdint": "cpp",
+    "type_traits": "cpp",
+    "typeinfo": "cpp",
+    "array": "cpp",
+    "bitset": "cpp",
+    "iomanip": "cpp"
+  },
+  "cmake.configureOnOpen": true
+}
