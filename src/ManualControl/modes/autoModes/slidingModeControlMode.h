@@ -21,6 +21,8 @@ extern DualSerial dualSerial;
 
 #define NO_PREVIOUS_READING -1111111
 
+#define MIN_MOVE_AMOUNT 0.5
+
 enum class chooseAxis
 {
 	x,

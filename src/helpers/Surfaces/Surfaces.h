@@ -4,6 +4,12 @@
 // have a look at https://wokwi.com/projects/344915694795620948
 
 #include "../MatrixOperations/Matrix.h"
+#include "../BasicLinearAlgebra/BasicLinearAlgebra.h"
+
+#define USING_BLA_LIBRARY true
+
+#define POSITION_SCALE_ADJUSTMENT 100.0
+
 #include "../MovePoints.h"
 
 #include "../../dualSerial/dualSerial.h"
@@ -32,7 +38,7 @@ struct SurfaceCoefficients
         e = eVal;
         g = gVal;
     }
-    SurfaceCoefficients(surfaceFitType fitType, MatrixObj RowEchelon)
+    SurfaceCoefficients(surfaceFitType fitType, MatrixObj solvedMatrix)
     {
         SurfaceCoefficients();
         int numRows = fitTypeToNumVars(fitType);
@@ -45,7 +51,23 @@ struct SurfaceCoefficients
 
         for (int i = 0; i < numRows; i++)
         {
-            *(vars[i]) = RowEchelon.get(i, numRows);
+            *(vars[i]) = solvedMatrix.get(i, numRows);
+        }
+    }
+    SurfaceCoefficients(surfaceFitType fitType, BLA::Matrix<6> solvedMatrix)
+    {
+        SurfaceCoefficients();
+        int numRows = fitTypeToNumVars(fitType);
+        float *vars[] = {&a,
+                         &b,
+                         &c,
+                         &d,
+                         &e,
+                         &g};
+
+        for (int i = 0; i < numRows; i++)
+        {
+            *(vars[i]) = solvedMatrix(i);
         }
     }
 };
@@ -54,18 +76,30 @@ class SurfaceData
 {
 private:
     int nextRowNumber;
-    MatrixObj AT;  // For curve fitting. A'
-    MatrixObj ATA; // For curve fitting. A'A
-    MatrixObj ATB; // For curve fitting. A'B
+#if USING_BLA_LIBRARY
+    BLA::Matrix<6, NUMBER_OF_LEAST_SQUARES_POINTS> AT; // For curve fitting. A'
+    BLA::Matrix<6, 6> ATA;                             // For curve fitting. A'A
+    BLA::Matrix<6> ATB;                                // For curve fitting. A'B
+#else
+    MatrixObj AT;           // For curve fitting. A'
+    MatrixObj ATA;          // For curve fitting. A'A
+    MatrixObj ATB;          // For curve fitting. A'B
+#endif
 
     void incrementRow();
 
 public:
-    MatrixObj A;          // For curve fitting. Ax=B
-    MatrixObj B;          // For curve fitting. Ax=B
-    MatrixObj RowEchelon; // For curve fitting. A'B
+#if USING_BLA_LIBRARY
+    BLA::Matrix<9, 6> A;         // For curve fitting. Ax=B
+    BLA::Matrix<9> B;            // For curve fitting. Ax=B
+    BLA::Matrix<6> solvedMatrix; // For curve fitting. A'B
+#else
+    MatrixObj A;            // For curve fitting. Ax=B
+    MatrixObj B;            // For curve fitting. Ax=B
+    MatrixObj solvedMatrix; // For curve fitting. A'B
+#endif
     bool operationCompleted;
-    bool validRowEchelonOperation;
+    bool validReductionOperation;
     bool validSurface; // indicates whether the surface is of parabolid like shape (has a minimum)
     int numberOfPoints;
     SurfaceCoefficients coefficients;

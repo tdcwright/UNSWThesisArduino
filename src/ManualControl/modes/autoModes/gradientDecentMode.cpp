@@ -18,6 +18,8 @@ GradientDecentModeBASE::GradientDecentModeBASE(String *inputString,
 	returningToCentre = false;
 	nextPostionFoundAndSet = false;
 
+	printedSurfaceState = false;
+
 	adaptiveAlphaReadingsEWMA = true;
 	alphaReadingsEWMA = DEFAULT_SLOW_READINGS_EWMA_ALPHA;
 	runningAveragesActivated = false;
@@ -256,8 +258,6 @@ actionState GradientDecentModeBASE::performGradDecent()
 	// Set the next collect data points.
 	if (currAutoState == AutoState::waiting)
 	{
-		dualSerial.println("Adding points to queue");
-
 		queueMovePoints();
 		surface.reset();
 		currAutoState = AutoState::collectingData;
@@ -267,7 +267,6 @@ actionState GradientDecentModeBASE::performGradDecent()
 	{
 		if (collectData() == actionState::FINISHED)
 		{
-			dualSerial.println("Collecting data finished");
 
 			currAutoState = AutoState::movingToMinima;
 		}
@@ -275,27 +274,33 @@ actionState GradientDecentModeBASE::performGradDecent()
 
 	if (currAutoState == AutoState::movingToMinima)
 	{
-		dualSerial.println("Moving to minima");
 
 		if (!surface.operationCompleted)
 		{
 			surface.performLeastSquaresOperation();
-			if (!surface.validRowEchelonOperation)
-				dualSerial.println("*ERROR* Invalid Row Echelon Operation");
-			if (!surface.validSurface)
+			if (!printedSurfaceState && (!surface.validReductionOperation || !surface.validSurface))
 			{
-				dualSerial.println("*ERROR* Invalid Surface");
-				printSurfaceCoefficients();
+				if (!surface.validReductionOperation)
+					dualSerial.println("*ERROR* Invalid Row Echelon Operation");
+				if (!surface.validSurface)
+				{
+					dualSerial.println("*ERROR* Invalid Surface");
+					printSurfaceCoefficients();
+				}
+				printedSurfaceState = true;
 			}
 
 			dualSerial.println("Competed surface operation");
 		}
 
-		if (surface.validRowEchelonOperation &&
+		if (surface.validReductionOperation &&
 			surface.validSurface)
 		{
-			dualSerial.println("Valid surface");
-			printSurfaceCoefficients();
+			if (!printedSurfaceState)
+			{
+				printSurfaceCoefficients();
+				printedSurfaceState = true;
+			}
 
 			if (goToNextPosition() == actionState::FINISHED)
 				currAutoState = AutoState::finishedMoving;
@@ -316,6 +321,7 @@ actionState GradientDecentModeBASE::performGradDecent()
 				returningToCentre = false;
 				dataCollectionIteration--;
 				currAutoState = AutoState::waiting;
+				printedSurfaceState = false;
 			}
 		}
 	}
@@ -323,6 +329,10 @@ actionState GradientDecentModeBASE::performGradDecent()
 	// In the case that have moved to end, and still vibrating
 	if (dataCollectionIteration > 0 && currAutoState == AutoState::finishedMoving)
 	{
+		// Finish even if not at minima
+		printingEachItter = false;
+		return actionState::FINISHED;
+
 		if (getEWMAAmplitudeValue() > STABLE_AMPLITUDE_THRESHOLD)
 		{
 			currAutoState = AutoState::waiting;
@@ -340,7 +350,6 @@ actionState GradientDecentModeBASE::collectData()
 {
 	if (pointQueue.isEmpty())
 	{
-		dualSerial.println("QUEUE is empty");
 		dataCollectionIteration++;
 		return actionState::FINISHED;
 	}
@@ -355,7 +364,14 @@ actionState GradientDecentModeBASE::collectData()
 		}
 
 		pointQueue.dequeue();
-		surface.addReadings(movePoint.x, movePoint.y, stabilisingEWMAAmplitude, AMPLITUDE_READINGS_NORMALISATION_POWER);
+		XYPoint currPosition = _positionController->getXYPosition();
+		dualSerial.print("adding readings to surface\t\t\t\t\t\t");
+		dualSerial.print(currPosition.x);
+		dualSerial.print("\t");
+		dualSerial.print(currPosition.y);
+		dualSerial.print("\t");
+		dualSerial.println(stabilisingEWMAAmplitude);
+		surface.addReadings(currPosition.x, currPosition.y, stabilisingEWMAAmplitude, AMPLITUDE_READINGS_NORMALISATION_POWER);
 	}
 
 	return actionState::RUNNING;
@@ -389,6 +405,15 @@ bool GradientDecentModeBASE::isAmplitudeStable()
 	}
 
 	stabilisingEWMAAmplitude = getEWMAAmplitudeValue() * STABILISING_EWMA_AMPLITUDE_ALPHA + (1 - STABILISING_EWMA_AMPLITUDE_ALPHA) * stabilisingEWMAAmplitude;
+
+	if (isnan(stabilisingEWMAAmplitude) ||
+		isinf(stabilisingEWMAAmplitude) ||
+		stabilisingEWMAAmplitude > 4294967040.0 ||
+		stabilisingEWMAAmplitude < -4294967040.0) // overflow
+	{
+		initialNumWavelengthsFound = false;
+		return false;
+	}
 
 	if (numberOfWavelengths - initialNumWavelengths > NUM_REV_UNTIL_STABLE)
 	{
@@ -439,6 +464,7 @@ void GradientDecentModeBASE::setState(ControlState newState)
 	currAutoState = AutoState::waiting;
 	dataCollectionIteration = 0;
 	pointQueue.clear();
+	printedSurfaceState = false;
 	// runningAveragesActivated = false;
 
 	// yAmplitudeAveragesActivated = false;
@@ -502,10 +528,19 @@ void GradientDecentModeBASE::printSurfaceCoefficients()
 	{
 		dualSerial.println("Surface Info:");
 		dualSerial.print("\tValid Row Echelon Operation: ");
-		dualSerial.println(surface.validRowEchelonOperation ? "TRUE" : "FALSE");
+		dualSerial.println(surface.validReductionOperation ? "TRUE" : "FALSE");
 		dualSerial.print("\tValid Surface: ");
 		dualSerial.println(surface.validSurface ? "TRUE" : "FALSE");
-		dualSerial.print("\tEquation: ");
+		if (surface.validSurface)
+		{
+			XYPoint minima = surface.getLocalMinima();
+			dualSerial.println("\tMinima: ");
+			dualSerial.print("\t\tX Min: ");
+			dualSerial.println(minima.x);
+			dualSerial.print("\t\tY Min: ");
+			dualSerial.println(minima.y);
+		}
+		dualSerial.println("\tEquation: ");
 		dualSerial.print("\t\tz = ");
 		switch (fitType)
 		{
@@ -561,8 +596,6 @@ void GradientDecentModeBASE::printSurfaceCoefficients()
 			dualSerial.print('\t\tg: ');
 			dualSerial.println(surface.coefficients.g);
 		}
-		dualSerial.print(surface.coefficients.a);
-		dualSerial.print("*x");
 	}
 	else
 	{
@@ -584,7 +617,6 @@ void GradientDecentModePoly22::queueMovePoints()
 
 	// https://mycurvefit.com/ y = 5.784456 + 34.20486*e^(-0.896212*x)
 	float moveAmount = 6 + 34 * exp(-1 * dataCollectionIteration);
-	dualSerial.println("adding points");
 
 	pointQueue.enqueue(XYPoint(currX, currY));
 	currX -= moveAmount;
@@ -604,7 +636,6 @@ void GradientDecentModePoly22::queueMovePoints()
 	pointQueue.enqueue(XYPoint(currX, currY));
 	currY -= moveAmount;
 	pointQueue.enqueue(XYPoint(currX, currY));
-	dualSerial.println("Finished adding points");
 }
 
 actionState GradientDecentModePoly22::goToNextPosition()

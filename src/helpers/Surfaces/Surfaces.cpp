@@ -20,7 +20,7 @@ SurfaceData::SurfaceData(surfaceFitType sfitType) : A(NUMBER_OF_LEAST_SQUARES_PO
                                                     AT(fitTypeToNumVars(sfitType), NUMBER_OF_LEAST_SQUARES_POINTS),
                                                     ATA(fitTypeToNumVars(sfitType), fitTypeToNumVars(sfitType)),
                                                     ATB(fitTypeToNumVars(sfitType), 1),
-                                                    RowEchelon(fitTypeToNumVars(sfitType), fitTypeToNumVars(sfitType) + 1),
+                                                    solvedMatrix(fitTypeToNumVars(sfitType), fitTypeToNumVars(sfitType) + 1),
                                                     coefficients()
 {
     reset();
@@ -40,13 +40,43 @@ void SurfaceData::incrementRow()
 
 void SurfaceData::addReadings(float x, float y, float z, int zPower)
 {
-    dualSerial.println("adding readings to surface");
-
     float normalisedZ = z;
 
     for (int i = 0; i < zPower - 1; i++)
         normalisedZ *= z;
-    MMath.addReadingsToABMatrix(fitType, A, B, nextRowNumber, x, y, normalisedZ);
+
+    float xAdjusted = x / POSITION_SCALE_ADJUSTMENT;
+    float yAdjusted = y / POSITION_SCALE_ADJUSTMENT;
+#if USING_BLA_LIBRARY
+    if (fitType == surfaceFitType::poly22)
+    {
+        A(nextRowNumber, 0) = sq(xAdjusted);
+        A(nextRowNumber, 1) = sq(yAdjusted);
+        A(nextRowNumber, 2) = xAdjusted * yAdjusted;
+        A(nextRowNumber, 3) = xAdjusted;
+        A(nextRowNumber, 4) = yAdjusted;
+        A(nextRowNumber, 5) = 1;
+    }
+    else if (fitType == surfaceFitType::poly11)
+    {
+        A(nextRowNumber, 3) = xAdjusted;
+        A(nextRowNumber, 4) = yAdjusted;
+        A(nextRowNumber, 5) = 1;
+    }
+    else if (fitType == surfaceFitType::poly21 || fitType == surfaceFitType::poly12)
+    {
+        A(nextRowNumber, 0) = (fitType == surfaceFitType::poly21 ? sq(xAdjusted) : sq(yAdjusted));
+        A(nextRowNumber, 2) = xAdjusted * yAdjusted;
+        A(nextRowNumber, 3) = xAdjusted;
+        A(nextRowNumber, 4) = yAdjusted;
+        A(nextRowNumber, 5) = 1;
+    }
+
+    B(nextRowNumber) = normalisedZ;
+#else
+    MMath.addReadingsToABMatrix(fitType, A, B, nextRowNumber, xAdjusted, yAdjusted, normalisedZ);
+#endif
+
     incrementRow();
 }
 
@@ -58,7 +88,7 @@ void SurfaceData::addReadings(float x, float y, float z)
 void SurfaceData::reset()
 {
     operationCompleted = false;
-    validRowEchelonOperation = false;
+    validReductionOperation = false;
     validSurface = false;
     nextRowNumber = 0;
     numberOfPoints = 0;
@@ -68,10 +98,12 @@ XYPoint SurfaceData::getLocalMinima()
 {
     if (fitType == surfaceFitType::poly22)
     {
-        double yMin = (((2.0 * coefficients.a * coefficients.e) / coefficients.c) - coefficients.d) / (coefficients.c - 4 * coefficients.a * coefficients.b / coefficients.c);
-        double xMin = -(2 * coefficients.b * yMin + coefficients.e) / coefficients.c;
+        // double yMin = (((2.0 * coefficients.a * coefficients.e) / coefficients.c) - coefficients.d) / (coefficients.c - 4 * coefficients.a * coefficients.b / coefficients.c);
+        // double xMin = -(2 * coefficients.b * yMin + coefficients.e) / coefficients.c;
+        double yMin = (coefficients.c * coefficients.d - 2 * coefficients.a * coefficients.e - coefficients.c * coefficients.e) / (2 * coefficients.b * (2 * coefficients.a + coefficients.c));
+        double xMin = -(coefficients.d / (2 * coefficients.a + coefficients.c));
 
-        return XYPoint(xMin, yMin);
+        return XYPoint(xMin * POSITION_SCALE_ADJUSTMENT, yMin * POSITION_SCALE_ADJUSTMENT);
     }
     else
     {
@@ -116,19 +148,31 @@ XYPoint SurfaceData::differentiateAtAPoint(XYPoint point)
 
 void SurfaceData::performLeastSquaresOperation()
 {
+
+#if USING_BLA_LIBRARY
+    AT = ~A;
+    ATA = AT * A;
+    ATB = AT * B;
+    auto ATA_decomp = ATA; // LUDecompose will destroy A here so we'll pass in a copy so we can refer back to A later
+    auto decomp = LUDecompose(ATA_decomp);
+    solvedMatrix = LUSolve(decomp, ATB);
+    validReductionOperation = true;
+#else
     MMath.Transpose(A, AT);
     MMath.Multiply(AT, A, ATA);
     MMath.Multiply(AT, B, ATB);
-    MMath.Copy(ATA, RowEchelon);
-    MMath.setCol(RowEchelon, fitTypeToNumVars(fitType), ATB);
-    validRowEchelonOperation = MMath.reducedRowEchelon(RowEchelon);
-    coefficients = SurfaceCoefficients(fitType, RowEchelon);
+    MMath.Copy(ATA, solvedMatrix);
+    MMath.setCol(solvedMatrix, fitTypeToNumVars(fitType), ATB);
+    validReductionOperation = MMath.reducedRowEchelon(solvedMatrix);
+#endif
+
+    coefficients = SurfaceCoefficients(fitType, solvedMatrix);
     operationCompleted = true;
 
     switch (fitType)
     {
     case surfaceFitType::poly22:
-        validSurface = coefficients.a * coefficients.b > 0;
+        validSurface = coefficients.a > 0 && coefficients.b > 0;
         break;
     case surfaceFitType::poly21:
     case surfaceFitType::poly12:

@@ -31,7 +31,7 @@ extern DualSerial dualSerial;
 #define NUM_OF_CHECKBACK_VALUES 3		   // NOT USED IF USE_CROSSED_AVERAGE IS FALSE. number of values to check ago to see whether the readings have crossed the average
 #define MILLIS_THRESHOLD_FOR_RPS_AVERAGE 5 // Subtraction value from measured millis to account for rps innacuracy
 
-#define AMPLITUDE_READINGS_NORMALISATION_POWER 2 // amplitude reading to the power of X to increase the readings for surface fitting
+#define AMPLITUDE_READINGS_NORMALISATION_POWER 1 // amplitude reading to the power of X to increase the readings for surface fitting
 #define STABLE_AMPLITUDE_THRESHOLD 0.5			 // Minimum level of vibration to continue finding minimum
 #define AMPLITUDE_STABLE_PAST_THRESHOLD 0.5
 
@@ -55,6 +55,8 @@ protected:
 	PointQueue pointQueue;
 	int dataCollectionIteration;
 	bool returningToCentre;
+
+	bool printedSurfaceState;
 
 	bool adaptiveAlphaReadingsEWMA;
 	double alphaReadingsEWMA; // Alpha for readings EWMA

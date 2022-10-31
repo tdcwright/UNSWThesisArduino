@@ -120,13 +120,14 @@ actionState SlidingModeControlMode::performSlidingModeControl()
 		return actionState::RUNNING;
 	}
 
+	printingEachItter = false;
 	return actionState::FINISHED;
 }
 
 actionState SlidingModeControlMode::axisMoveSpeed(chooseAxis currAxis)
 {
 
-	if (moveAmount < 0.5)
+	if (moveAmount < MIN_MOVE_AMOUNT)
 	{
 		dualSerial.println("Done becasue of minima");
 		return actionState::FINISHED;
