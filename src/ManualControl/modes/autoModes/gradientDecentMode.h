@@ -43,7 +43,7 @@ enum class AutoState
 	collectingData,
 	movingToMinima,
 	moving, // for sliding mode control
-	finishedMoving
+	finishedMoving,
 };
 
 class GradientDecentModeBASE : public PositionControlMode
@@ -53,6 +53,7 @@ protected:
 	SurfaceData surface;
 	AutoState currAutoState;
 	PointQueue pointQueue;
+	XYPoint initialPosition;
 	int dataCollectionIteration;
 	bool returningToCentre;
 
@@ -94,6 +95,8 @@ protected:
 	actionState performGradDecent();
 	// Moves to positions. RUNNING, WAITING, FINISHED
 	actionState collectData();
+	virtual void storeCollectedData();
+
 	// Returns whether the gradient of the amplitude is low
 	bool isAmplitudeStable();
 	unsigned long initialNumWavelengths;
@@ -105,6 +108,9 @@ protected:
 	virtual actionState goToNextPosition();
 	// Adds a series of points to the move queue, centered around the current location;
 	virtual void queueMovePoints() = 0;
+
+	// Converts current rev/s to move amount on linear scale
+	double RPSToMoveAmount();
 
 	controllerMode detectCommand();
 

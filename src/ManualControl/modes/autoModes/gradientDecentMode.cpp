@@ -6,7 +6,8 @@ GradientDecentModeBASE::GradientDecentModeBASE(String *inputString,
 											   surfaceFitType sFitType)
 	: PositionControlMode(inputString, positionController, MPU9150, NULL),
 	  surface(sFitType),
-	  pastGY(NUMBER_OF_PAST_GYRO_VALUES) // Initalise two circular arrays
+	  pastGY(NUMBER_OF_PAST_GYRO_VALUES), // Initalise two circular arrays
+	  initialPosition(0, 0)
 #if USE_X_AND_Y_READINGS_FOR_ERROR
 	  ,
 	  pastGX(NUMBER_OF_PAST_GYRO_VALUES) // Initalise two circular arrays
@@ -258,6 +259,7 @@ actionState GradientDecentModeBASE::performGradDecent()
 	// Set the next collect data points.
 	if (currAutoState == AutoState::waiting)
 	{
+		initialPosition = _positionController->getXYPosition();
 		queueMovePoints();
 		surface.reset();
 		currAutoState = AutoState::collectingData;
@@ -319,7 +321,7 @@ actionState GradientDecentModeBASE::performGradDecent()
 			if (_positionController->positionControl() == actionState::FINISHED)
 			{
 				returningToCentre = false;
-				dataCollectionIteration--;
+				dataCollectionIteration--; // undo last iteration
 				currAutoState = AutoState::waiting;
 				printedSurfaceState = false;
 			}
@@ -363,25 +365,30 @@ actionState GradientDecentModeBASE::collectData()
 			return actionState::WAITING;
 		}
 
+		storeCollectedData();
 		pointQueue.dequeue();
-		XYPoint currPosition = _positionController->getXYPosition();
-		dualSerial.print("adding readings to surface\t\t\t\t\t\t");
-		dualSerial.print(currPosition.x);
-		dualSerial.print("\t");
-		dualSerial.print(currPosition.y);
-		dualSerial.print("\t");
-		dualSerial.println(stabilisingEWMAAmplitude);
-		surface.addReadings(currPosition.x, currPosition.y, stabilisingEWMAAmplitude, AMPLITUDE_READINGS_NORMALISATION_POWER);
 	}
 
 	return actionState::RUNNING;
+}
+
+void GradientDecentModeBASE::storeCollectedData()
+{
+	XYPoint currPosition = _positionController->getXYPosition();
+	dualSerial.print("adding readings to surface\t\t\t\t\t\t");
+	dualSerial.print(currPosition.x);
+	dualSerial.print("\t");
+	dualSerial.print(currPosition.y);
+	dualSerial.print("\t");
+	dualSerial.println(stabilisingEWMAAmplitude);
+	surface.addReadings(currPosition.x, currPosition.y, stabilisingEWMAAmplitude, AMPLITUDE_READINGS_NORMALISATION_POWER);
 }
 
 actionState GradientDecentModeBASE::goToNextPosition()
 {
 	if (!nextPostionFoundAndSet)
 	{
-		XYPoint directionOfDecent = surface.directionOfSteepestDecent(_positionController->getXYPosition());
+		XYPoint directionOfDecent = surface.directionOfSteepestDecent(initialPosition);
 		_positionController->setDesiredXY(directionOfDecent);
 		nextPostionFoundAndSet = true;
 	}
@@ -458,11 +465,21 @@ double GradientDecentModeBASE::getAlphaReadingsEWMA()
 	}
 }
 
+double GradientDecentModeBASE::RPSToMoveAmount()
+{
+	// 2rpm: 20mm
+	//  4rpm: 10mm
+	//  5rpm:  5mm
+	double currRotationRate = _MPU9150->getRotationRate();
+
+	return -5 * currRotationRate + 30;
+}
+
 void GradientDecentModeBASE::setState(ControlState newState)
 {
 	PositionControlMode::setState(newState);
 	currAutoState = AutoState::waiting;
-	dataCollectionIteration = 0;
+	// dataCollectionIteration = 0;
 	pointQueue.clear();
 	printedSurfaceState = false;
 	// runningAveragesActivated = false;
