@@ -46,11 +46,12 @@ enum class AutoState
 	finishedMoving,
 };
 
+template <int numVars, int numReadings>
 class GradientDecentModeBASE : public PositionControlMode
 {
 protected:
 	surfaceFitType fitType;
-	SurfaceData surface;
+	SurfaceData<numVars, numReadings> surface;
 	AutoState currAutoState;
 	PointQueue pointQueue;
 	XYPoint initialPosition;
@@ -129,7 +130,7 @@ public:
 };
 
 // Tries to find local minima using poly22 function
-class GradientDecentModePoly22 : public GradientDecentModeBASE
+class GradientDecentModePoly22 : public GradientDecentModeBASE<POLY22_NUM_VARS, POLY22_MIN_NUM_POINTS>
 {
 protected:
 	// Performs gradient decent on the collected data. FINISHED, RUNNING
@@ -146,13 +147,12 @@ public:
 
 // ****************
 // Tries to find local minima using poly21 function
-class GradientDecentModePoly21 : public GradientDecentModeBASE
+class GradientDecentModePoly21 : public GradientDecentModeBASE<POLY21_NUM_VARS, POLY21_MIN_NUM_POINTS>
 {
 protected:
-	SurfaceData surfacePOLY12;
+	SurfaceData<POLY21_NUM_VARS, POLY21_MIN_NUM_POINTS> surfacePOLY12;
 
 	// Performs gradient decent on the collected data. FINISHED, RUNNING
-	SurfaceData surfacePOLY12;
 	actionState goToNextPosition();
 	// Adds a series of points to the move queue, centered around the current location;
 	void queueMovePoints();
@@ -164,7 +164,8 @@ protected:
 	virtual void printSurface();
 
 public:
-	GradientDecentModePoly21(String *inputString, PositionController *positionController, Accelerometer *MPU9150) : GradientDecentModeBASE(inputString, positionController, MPU9150, surfaceFitType::poly21){};
+	GradientDecentModePoly21(String *inputString, PositionController *positionController, Accelerometer *MPU9150) : GradientDecentModeBASE(inputString, positionController, MPU9150, surfaceFitType::poly21),
+																													surfacePOLY12(surfaceFitType::poly12){};
 	~GradientDecentModePoly21(){};
 	void setState(ControlState newState) { GradientDecentModeBASE::setState(newState); };
 };
@@ -178,7 +179,7 @@ public:
 };
 
 // Tries to find local minima using poly21 function
-class GradientDecentModePoly11 : public GradientDecentModeBASE
+class GradientDecentModePoly11 : public GradientDecentModeBASE<POLY11_NUM_VARS, POLY11_MIN_NUM_POINTS>
 {
 protected:
 	// Performs gradient decent on the collected data. FINISHED, RUNNING

@@ -29,7 +29,7 @@ enum class chooseAxis
 	y
 };
 
-class SlidingModeControlMode : public GradientDecentModeBASE
+class SlidingModeControlMode : public GradientDecentModeBASE<1, 1>
 {
 private:
 	void resetAxisControlValues();

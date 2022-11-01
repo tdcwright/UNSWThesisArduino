@@ -10,14 +10,12 @@
 
 #define POSITION_SCALE_ADJUSTMENT 100.0
 
-#define MAX_NUM_SURFACE_TRIES 5
-
 #include "../MovePoints.h"
 
 #include "../../dualSerial/dualSerial.h"
 extern DualSerial dualSerial;
 
-#define NUMBER_OF_LEAST_SQUARES_POINTS 9
+// #define NUMBER_OF_LEAST_SQUARES_POINTS 9
 
 int fitTypeToNumVars(surfaceFitType fitType);
 
@@ -59,7 +57,8 @@ struct SurfaceCoefficients
             *(vars[i]) = solvedMatrix.get(i, numRows);
         }
     }
-    SurfaceCoefficients(surfaceFitType fitType, BLA::Matrix<6> solvedMatrix)
+    template <int rows, int cols>
+    SurfaceCoefficients(surfaceFitType fitType, BLA::Matrix<rows, cols> solvedMatrix)
     {
         SurfaceCoefficients();
         int numRows = fitTypeToNumVars(fitType);
@@ -77,14 +76,15 @@ struct SurfaceCoefficients
     }
 };
 
+template <int numVars, int numReadings>
 class SurfaceData
 {
 private:
     int nextRowNumber;
 #if USING_BLA_LIBRARY
-    BLA::Matrix<6, NUMBER_OF_LEAST_SQUARES_POINTS> AT; // For curve fitting. A'
-    BLA::Matrix<6, 6> ATA;                             // For curve fitting. A'A
-    BLA::Matrix<6> ATB;                                // For curve fitting. A'B
+    BLA::Matrix<numVars, numReadings> AT; // For curve fitting. A'
+    BLA::Matrix<numVars, numVars> ATA;    // For curve fitting. A'A
+    BLA::Matrix<numVars> ATB;             // For curve fitting. A'B
 #else
     MatrixObj AT;           // For curve fitting. A'
     MatrixObj ATA;          // For curve fitting. A'A
@@ -96,9 +96,9 @@ private:
 
 public:
 #if USING_BLA_LIBRARY
-    BLA::Matrix<9, 6> A;         // For curve fitting. Ax=B
-    BLA::Matrix<9> B;            // For curve fitting. Ax=B
-    BLA::Matrix<6> solvedMatrix; // For curve fitting. A'B
+    BLA::Matrix<numReadings, numVars> A; // For curve fitting. Ax=B
+    BLA::Matrix<numReadings> B;          // For curve fitting. Ax=B
+    BLA::Matrix<numVars> solvedMatrix;   // For curve fitting. A'B
 #else
     MatrixObj A;            // For curve fitting. Ax=B
     MatrixObj B;            // For curve fitting. Ax=B

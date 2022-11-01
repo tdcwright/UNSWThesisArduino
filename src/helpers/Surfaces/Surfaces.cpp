@@ -15,30 +15,36 @@ int fitTypeToNumVars(surfaceFitType fitType)
     }
 }
 
-SurfaceData::SurfaceData(surfaceFitType sfitType) : A(NUMBER_OF_LEAST_SQUARES_POINTS, fitTypeToNumVars(sfitType)),
-                                                    B(NUMBER_OF_LEAST_SQUARES_POINTS, 1),
-                                                    AT(fitTypeToNumVars(sfitType), NUMBER_OF_LEAST_SQUARES_POINTS),
-                                                    ATA(fitTypeToNumVars(sfitType), fitTypeToNumVars(sfitType)),
-                                                    ATB(fitTypeToNumVars(sfitType), 1),
-                                                    solvedMatrix(fitTypeToNumVars(sfitType), fitTypeToNumVars(sfitType) + 1),
-                                                    coefficients()
+template <int numVars, int numReadings>
+SurfaceData<numVars, numReadings>::SurfaceData(surfaceFitType sfitType) : coefficients()
+#if !USING_BLA_LIBRARY
+                                                                          ,
+                                                                          A(NUMBER_OF_LEAST_SQUARES_POINTS, fitTypeToNumVars(sfitType)),
+                                                                          B(NUMBER_OF_LEAST_SQUARES_POINTS, 1),
+                                                                          AT(fitTypeToNumVars(sfitType), NUMBER_OF_LEAST_SQUARES_POINTS),
+                                                                          ATA(fitTypeToNumVars(sfitType), fitTypeToNumVars(sfitType)),
+                                                                          ATB(fitTypeToNumVars(sfitType), 1),
+                                                                          solvedMatrix(fitTypeToNumVars(sfitType), fitTypeToNumVars(sfitType) + 1)
+#endif
 {
     reset();
 
     fitType = sfitType;
 }
 
-void SurfaceData::incrementRow()
+template <int numVars, int numReadings>
+void SurfaceData<numVars, numReadings>::incrementRow()
 {
     nextRowNumber++;
-    if (nextRowNumber >= NUMBER_OF_LEAST_SQUARES_POINTS)
+    if (nextRowNumber >= numReadings)
         nextRowNumber = 0;
 
-    if (numberOfPoints < NUMBER_OF_LEAST_SQUARES_POINTS)
+    if (numberOfPoints < numReadings)
         numberOfPoints++;
 }
 
-void SurfaceData::addReadings(float x, float y, float z, int zPower)
+template <int numVars, int numReadings>
+void SurfaceData<numVars, numReadings>::addReadings(float x, float y, float z, int zPower)
 {
     float normalisedZ = z;
 
@@ -59,17 +65,17 @@ void SurfaceData::addReadings(float x, float y, float z, int zPower)
     }
     else if (fitType == surfaceFitType::poly11)
     {
-        A(nextRowNumber, 3) = xAdjusted;
-        A(nextRowNumber, 4) = yAdjusted;
-        A(nextRowNumber, 5) = 1;
+        A(nextRowNumber, 0) = xAdjusted;
+        A(nextRowNumber, 1) = yAdjusted;
+        A(nextRowNumber, 2) = 1;
     }
     else if (fitType == surfaceFitType::poly21 || fitType == surfaceFitType::poly12)
     {
         A(nextRowNumber, 0) = (fitType == surfaceFitType::poly21 ? sq(xAdjusted) : sq(yAdjusted));
-        A(nextRowNumber, 2) = xAdjusted * yAdjusted;
-        A(nextRowNumber, 3) = xAdjusted;
-        A(nextRowNumber, 4) = yAdjusted;
-        A(nextRowNumber, 5) = 1;
+        A(nextRowNumber, 1) = xAdjusted * yAdjusted;
+        A(nextRowNumber, 2) = xAdjusted;
+        A(nextRowNumber, 3) = yAdjusted;
+        A(nextRowNumber, 4) = 1;
     }
 
     B(nextRowNumber) = normalisedZ;
@@ -80,12 +86,14 @@ void SurfaceData::addReadings(float x, float y, float z, int zPower)
     incrementRow();
 }
 
-void SurfaceData::addReadings(float x, float y, float z)
+template <int numVars, int numReadings>
+void SurfaceData<numVars, numReadings>::addReadings(float x, float y, float z)
 {
     addReadings(x, y, z, 1);
 }
 
-void SurfaceData::reset()
+template <int numVars, int numReadings>
+void SurfaceData<numVars, numReadings>::reset()
 {
     operationCompleted = false;
     validReductionOperation = false;
@@ -94,7 +102,8 @@ void SurfaceData::reset()
     numberOfPoints = 0;
 }
 
-XYPoint SurfaceData::getLocalMinima()
+template <int numVars, int numReadings>
+XYPoint SurfaceData<numVars, numReadings>::getLocalMinima()
 {
     if (fitType == surfaceFitType::poly22)
     {
@@ -112,13 +121,15 @@ XYPoint SurfaceData::getLocalMinima()
     }
 }
 
-XYPoint SurfaceData::directionOfSteepestDecent(XYPoint point)
+template <int numVars, int numReadings>
+XYPoint SurfaceData<numVars, numReadings>::directionOfSteepestDecent(XYPoint point)
 {
     XYPoint diff = differentiateAtAPoint(point);
     return XYPoint(diff.x * -1, diff.y * -1);
 }
 
-XYPoint SurfaceData::differentiateAtAPoint(XYPoint point)
+template <int numVars, int numReadings>
+XYPoint SurfaceData<numVars, numReadings>::differentiateAtAPoint(XYPoint point)
 {
     double x = point.x;
     double y = point.y;
@@ -146,27 +157,19 @@ XYPoint SurfaceData::differentiateAtAPoint(XYPoint point)
     return XYPoint(dx, dy);
 }
 
-void SurfaceData::performLeastSquaresOperation()
+template <int numVars, int numReadings>
+void SurfaceData<numVars, numReadings>::performLeastSquaresOperation()
 {
 
 #if USING_BLA_LIBRARY
     AT = ~A;
     ATA = AT * A;
     ATB = AT * B;
-    int numTries = 0;
-    while (numTries < MAX_NUM_SURFACE_TRIES)
-    {
-        auto ATA_decomp = ATA; // LUDecompose will destroy A here so we'll pass in a copy so we can refer back to A later
-        auto decomp = LUDecompose(ATA_decomp);
-        solvedMatrix = LUSolve(decomp, ATB);
-        coefficients = SurfaceCoefficients(fitType, solvedMatrix);
+    auto ATA_decomp = ATA; // LUDecompose will destroy A here so we'll pass in a copy so we can refer back to A later
+    auto decomp = LUDecompose(ATA_decomp);
+    solvedMatrix = LUSolve(decomp, ATB);
+    coefficients = SurfaceCoefficients(fitType, solvedMatrix);
 
-        if (checkValidSurface())
-            break;
-        else
-            Sleep(20);
-        numTries++;
-    }
     validReductionOperation = true;
 
 #else
@@ -184,7 +187,8 @@ void SurfaceData::performLeastSquaresOperation()
     validSurface = checkValidSurface();
 }
 
-bool SurfaceData::checkValidSurface()
+template <int numVars, int numReadings>
+bool SurfaceData<numVars, numReadings>::checkValidSurface()
 {
     switch (fitType)
     {
@@ -198,7 +202,8 @@ bool SurfaceData::checkValidSurface()
     }
 }
 
-void SurfaceData::printSurfaceCoefficients()
+template <int numVars, int numReadings>
+void SurfaceData<numVars, numReadings>::printSurfaceCoefficients()
 {
     if (operationCompleted)
     {

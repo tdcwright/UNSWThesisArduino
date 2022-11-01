@@ -1,3 +1,9 @@
+// #include "src/helpers/Surfaces/Surfaces.h"
+// #include "src/dualSerial/dualSerial.h"
+// #define POWER 1
+// surfaceFitType fitType = surfaceFitType::poly21;
+// SurfaceData testSurface(fitType);
+
 #include "DiskArduino.h"
 
 LimitSwitch LSYellow("Yellow", LS_PIN_YELLOW);
@@ -49,10 +55,25 @@ void setup()
   bluetoothChip.begin();
 
   manualControl.begin();
+
+  // testSurface.addReadings(-69.958, -69.97, 6.103, POWER);
+  // testSurface.addReadings(-69.917, -30.038, 5.922, POWER);
+  // testSurface.addReadings(-49.958, -49.988, 2.726, POWER);
+  // testSurface.addReadings(-30.035, -69.97, 2.867, POWER);
+  // testSurface.addReadings(-30.035, -30.038, 2.682, POWER);
+
+  // testSurface.performLeastSquaresOperation();
+  // testSurface.printSurfaceCoefficients();
+  // XYPoint min = testSurface.getLocalMinima();
+  // Serial.print("XMin: ");
+  // Serial.println(min.x);
+  // Serial.print("YMin: ");
+  // Serial.println(min.y);
 }
 
 void loop()
 {
+
   manualControl.runController();
 
   unsigned long currTime = millis();

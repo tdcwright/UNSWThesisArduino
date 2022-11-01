@@ -60,7 +60,7 @@ struct BroydenPoint
 	}
 };
 
-class BroydenFunctionMode : public GradientDecentModeBASE
+class BroydenFunctionMode : public GradientDecentModeBASE<1, 1>
 {
 protected:
 	BroydenPoint points[5];

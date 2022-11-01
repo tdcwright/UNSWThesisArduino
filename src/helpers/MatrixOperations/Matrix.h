@@ -19,11 +19,11 @@ extern DualSerial dualSerial;
 typedef double mtx_type;
 
 #define POLY22_NUM_VARS 6
-#define POLY22_MIN_NUM_POINTS 6
+#define POLY22_MIN_NUM_POINTS 9
 #define POLY21_NUM_VARS 5
 #define POLY21_MIN_NUM_POINTS 5
 #define POLY11_NUM_VARS 3
-#define POLY11_MIN_NUM_POINTS 3
+#define POLY11_MIN_NUM_POINTS 4
 // Selects which surface equation to use
 enum class surfaceFitType
 {

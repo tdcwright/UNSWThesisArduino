@@ -1,9 +1,10 @@
 #include "gradientDecentMode.h"
 
-GradientDecentModeBASE::GradientDecentModeBASE(String *inputString,
-											   PositionController *positionController,
-											   Accelerometer *MPU9150,
-											   surfaceFitType sFitType)
+template <int numVars, int numReadings>
+GradientDecentModeBASE<numVars, numReadings>::GradientDecentModeBASE(String *inputString,
+																	 PositionController *positionController,
+																	 Accelerometer *MPU9150,
+																	 surfaceFitType sFitType)
 	: PositionControlMode(inputString, positionController, MPU9150, NULL),
 	  surface(sFitType),
 	  pastGY(NUMBER_OF_PAST_GYRO_VALUES), // Initalise two circular arrays
@@ -44,7 +45,8 @@ GradientDecentModeBASE::GradientDecentModeBASE(String *inputString,
 #endif
 }
 
-controllerMode GradientDecentModeBASE::detectCommand()
+template <int numVars, int numReadings>
+controllerMode GradientDecentModeBASE<numVars, numReadings>::detectCommand()
 {
 	uint inputLength = _inputString->length();
 	if (inputLength > 0 && (*_inputString)[inputLength - 1] == '\n')
@@ -102,7 +104,7 @@ controllerMode GradientDecentModeBASE::detectCommand()
 				}
 				break;
 			case 's':
-				surface.printSurfaceCoefficients();
+				printSurface();
 				break;
 			default:
 				return PositionControlMode::detectCommand();
@@ -116,7 +118,8 @@ controllerMode GradientDecentModeBASE::detectCommand()
 	return controllerMode::NO_CHANGE;
 }
 
-modeResult GradientDecentModeBASE::runMode()
+template <int numVars, int numReadings>
+modeResult GradientDecentModeBASE<numVars, numReadings>::runMode()
 {
 	controllerMode newMode = detectCommand();
 	if (newMode != controllerMode::NO_CHANGE)
@@ -146,7 +149,8 @@ modeResult GradientDecentModeBASE::runMode()
 	return modeResult(runResult::MODE_SUCESS, controllerMode::NO_CHANGE);
 }
 
-void GradientDecentModeBASE::printHelp()
+template <int numVars, int numReadings>
+void GradientDecentModeBASE<numVars, numReadings>::printHelp()
 {
 	dualSerial.println("Help in mode: GRADIENT DECENT MODE. First 2 letters can be accepted");
 	PositionControlMode::printHelp(false);
@@ -165,7 +169,8 @@ void GradientDecentModeBASE::printHelp()
 // ^^^^^ GENERAL MODE OPERATIONS
 // vvvvv CONTROLLER OPERATIONS
 
-void GradientDecentModeBASE::collectReadings()
+template <int numVars, int numReadings>
+void GradientDecentModeBASE<numVars, numReadings>::collectReadings()
 {
 	if (!_MPU9150->dataReady())
 		return;
@@ -211,14 +216,15 @@ void GradientDecentModeBASE::collectReadings()
 	collectReadingsSingleAxis(_MPU9150->gx, pastGX, gxRunningAverage, xAmplitudeAveragesActivated, gxAmplitudeEWMA, gxLastAmplitudeEWMA, gxAmplitudeRateEWMA, newWavelength);
 #endif
 }
-void GradientDecentModeBASE::collectReadingsSingleAxis(float newReading,
-													   CircularArray<float> &pastReadings,
-													   float &runningAverage,
-													   bool &amplitudeAvgSet,
-													   float &amplitudeEWMA,
-													   float &lastAmplitudeEWMA,
-													   float &amplitudeRateEWMA,
-													   bool &newWavelength)
+template <int numVars, int numReadings>
+void GradientDecentModeBASE<numVars, numReadings>::collectReadingsSingleAxis(float newReading,
+																			 CircularArray<float> &pastReadings,
+																			 float &runningAverage,
+																			 bool &amplitudeAvgSet,
+																			 float &amplitudeEWMA,
+																			 float &lastAmplitudeEWMA,
+																			 float &amplitudeRateEWMA,
+																			 bool &newWavelength)
 {
 	runningAverage = newReading * getAlphaReadingsEWMA() + (1 - getAlphaReadingsEWMA()) * runningAverage;
 	pastReadings.addValue(newReading);
@@ -243,7 +249,8 @@ void GradientDecentModeBASE::collectReadingsSingleAxis(float newReading,
 	}
 }
 
-bool GradientDecentModeBASE::checkbackCrossedAverage(CircularArray<float> &pastReadings, float &averageReadings)
+template <int numVars, int numReadings>
+bool GradientDecentModeBASE<numVars, numReadings>::checkbackCrossedAverage(CircularArray<float> &pastReadings, float &averageReadings)
 {
 	if (pastReadings.numElements() < NUM_OF_CHECKBACK_VALUES)
 		return false;
@@ -254,7 +261,8 @@ bool GradientDecentModeBASE::checkbackCrossedAverage(CircularArray<float> &pastR
 	return false;
 }
 
-actionState GradientDecentModeBASE::performGradDecent()
+template <int numVars, int numReadings>
+actionState GradientDecentModeBASE<numVars, numReadings>::performGradDecent()
 {
 	// Set the next collect data points.
 	if (currAutoState == AutoState::waiting)
@@ -348,7 +356,8 @@ actionState GradientDecentModeBASE::performGradDecent()
 	return actionState::RUNNING;
 }
 
-actionState GradientDecentModeBASE::collectData()
+template <int numVars, int numReadings>
+actionState GradientDecentModeBASE<numVars, numReadings>::collectData()
 {
 	if (pointQueue.isEmpty())
 	{
@@ -372,7 +381,8 @@ actionState GradientDecentModeBASE::collectData()
 	return actionState::RUNNING;
 }
 
-void GradientDecentModeBASE::storeCollectedData()
+template <int numVars, int numReadings>
+void GradientDecentModeBASE<numVars, numReadings>::storeCollectedData()
 {
 	XYPoint currPosition = _positionController->getXYPosition();
 	dualSerial.print("adding readings to surface\t\t\t\t\t\t");
@@ -384,7 +394,8 @@ void GradientDecentModeBASE::storeCollectedData()
 	surface.addReadings(currPosition.x, currPosition.y, stabilisingEWMAAmplitude, AMPLITUDE_READINGS_NORMALISATION_POWER);
 }
 
-actionState GradientDecentModeBASE::goToNextPosition()
+template <int numVars, int numReadings>
+actionState GradientDecentModeBASE<numVars, numReadings>::goToNextPosition()
 {
 	if (!nextPostionFoundAndSet)
 	{
@@ -402,7 +413,8 @@ actionState GradientDecentModeBASE::goToNextPosition()
 	return actionState::RUNNING;
 }
 
-bool GradientDecentModeBASE::isAmplitudeStable()
+template <int numVars, int numReadings>
+bool GradientDecentModeBASE<numVars, numReadings>::isAmplitudeStable()
 {
 	if (!initialNumWavelengthsFound)
 	{
@@ -431,7 +443,8 @@ bool GradientDecentModeBASE::isAmplitudeStable()
 	return false;
 }
 
-float GradientDecentModeBASE::getEWMAAmplitudeValue()
+template <int numVars, int numReadings>
+float GradientDecentModeBASE<numVars, numReadings>::getEWMAAmplitudeValue()
 {
 #if USE_X_AND_Y_READINGS_FOR_ERROR
 	return (gxAmplitudeEWMA + gyAmplitudeEWMA) / 2;
@@ -440,7 +453,8 @@ float GradientDecentModeBASE::getEWMAAmplitudeValue()
 #endif
 }
 
-float GradientDecentModeBASE::getEWMAAmplitudeRateValue()
+template <int numVars, int numReadings>
+float GradientDecentModeBASE<numVars, numReadings>::getEWMAAmplitudeRateValue()
 {
 #if USE_X_AND_Y_READINGS_FOR_ERROR
 	return (gxAmplitudeRateEWMA + gyAmplitudeRateEWMA) / 2;
@@ -449,7 +463,8 @@ float GradientDecentModeBASE::getEWMAAmplitudeRateValue()
 #endif
 }
 
-double GradientDecentModeBASE::getAlphaReadingsEWMA()
+template <int numVars, int numReadings>
+double GradientDecentModeBASE<numVars, numReadings>::getAlphaReadingsEWMA()
 {
 	if (adaptiveAlphaReadingsEWMA)
 	{
@@ -465,7 +480,8 @@ double GradientDecentModeBASE::getAlphaReadingsEWMA()
 	}
 }
 
-double GradientDecentModeBASE::RPSToMoveAmount()
+template <int numVars, int numReadings>
+double GradientDecentModeBASE<numVars, numReadings>::RPSToMoveAmount()
 {
 	// 2rps: 14mm
 	//  4rps: 8mm
@@ -476,7 +492,8 @@ double GradientDecentModeBASE::RPSToMoveAmount()
 	return -3 * currRotationRate + 20;
 }
 
-void GradientDecentModeBASE::setState(ControlState newState)
+template <int numVars, int numReadings>
+void GradientDecentModeBASE<numVars, numReadings>::setState(ControlState newState)
 {
 	PositionControlMode::setState(newState);
 	currAutoState = AutoState::waiting;
@@ -492,7 +509,8 @@ void GradientDecentModeBASE::setState(ControlState newState)
 #endif
 }
 
-void GradientDecentModeBASE::printHeader()
+template <int numVars, int numReadings>
+void GradientDecentModeBASE<numVars, numReadings>::printHeader()
 {
 	if (printType == 'v')
 	{
@@ -509,7 +527,8 @@ void GradientDecentModeBASE::printHeader()
 	}
 }
 
-void GradientDecentModeBASE::printDeviceState()
+template <int numVars, int numReadings>
+void GradientDecentModeBASE<numVars, numReadings>::printDeviceState()
 {
 	if (printType == 'v')
 	{
@@ -597,24 +616,6 @@ void GradientDecentModePoly22::queueMovePoints()
 	pointQueue.enqueue(XYPoint(currX, currY));
 	currY -= moveAmount;
 	pointQueue.enqueue(XYPoint(currX, currY));
-}
-
-actionState GradientDecentModePoly22::goToNextPosition()
-{
-	if (!nextPostionFoundAndSet)
-	{
-		XYPoint localMinima = surface.getLocalMinima();
-		_positionController->setDesiredXY(localMinima);
-		nextPostionFoundAndSet = true;
-	}
-
-	if (_positionController->positionControl() == actionState::FINISHED)
-	{
-		nextPostionFoundAndSet = false;
-		return actionState::FINISHED;
-	}
-
-	return actionState::RUNNING;
 }
 
 void GradientDecentModePoly21::queueMovePoints()
@@ -790,7 +791,7 @@ void GradientDecentModePoly11::queueMovePoints()
 	double currY = _positionController->getYPosition();
 
 	// https://mycurvefit.com/ y = 5.784456 + 34.20486*e^(-0.896212*x)
-	float moveAmount = 6 + 34 * exp(-1 * (dataCollectionIteration));
+	float moveAmount = 3 + 15 * exp(-1 * (dataCollectionIteration));
 
 	pointQueue.enqueue(XYPoint(currX, currY));
 	currX += moveAmount;
