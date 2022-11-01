@@ -102,7 +102,7 @@ controllerMode GradientDecentModeBASE::detectCommand()
 				}
 				break;
 			case 's':
-				printSurfaceCoefficients();
+				surface.printSurfaceCoefficients();
 				break;
 			default:
 				return PositionControlMode::detectCommand();
@@ -287,7 +287,7 @@ actionState GradientDecentModeBASE::performGradDecent()
 				if (!surface.validSurface)
 				{
 					dualSerial.println("*ERROR* Invalid Surface");
-					printSurfaceCoefficients();
+					surface.printSurfaceCoefficients();
 				}
 				printedSurfaceState = true;
 			}
@@ -300,7 +300,7 @@ actionState GradientDecentModeBASE::performGradDecent()
 		{
 			if (!printedSurfaceState)
 			{
-				printSurfaceCoefficients();
+				surface.printSurfaceCoefficients();
 				printedSurfaceState = true;
 			}
 
@@ -537,87 +537,6 @@ void GradientDecentModeBASE::printDeviceState()
 	else
 	{
 		PositionControlMode::printDeviceState();
-	}
-}
-
-void GradientDecentModeBASE::printSurfaceCoefficients()
-{
-	if (surface.operationCompleted)
-	{
-		dualSerial.println("Surface Info:");
-		dualSerial.print("\tValid Row Echelon Operation: ");
-		dualSerial.println(surface.validReductionOperation ? "TRUE" : "FALSE");
-		dualSerial.print("\tValid Surface: ");
-		dualSerial.println(surface.validSurface ? "TRUE" : "FALSE");
-		if (surface.validSurface)
-		{
-			XYPoint minima = surface.getLocalMinima();
-			dualSerial.println("\tMinima: ");
-			dualSerial.print("\t\tX Min: ");
-			dualSerial.println(minima.x);
-			dualSerial.print("\t\tY Min: ");
-			dualSerial.println(minima.y);
-		}
-		dualSerial.println("\tEquation: ");
-		dualSerial.print("\t\tz = ");
-		switch (fitType)
-		{
-		case surfaceFitType::poly12:
-		case surfaceFitType::poly21:
-			dualSerial.print(surface.coefficients.a);
-			if (fitType == surfaceFitType::poly12)
-				dualSerial.print("*y^2 + ");
-			else
-				dualSerial.print("*x^2 + ");
-			dualSerial.print(surface.coefficients.b);
-			dualSerial.print("*x*y + ");
-			dualSerial.print(surface.coefficients.c);
-			dualSerial.print("*x + ");
-			dualSerial.print(surface.coefficients.d);
-			dualSerial.print("*y + ");
-			dualSerial.print(surface.coefficients.e);
-			dualSerial.println();
-			break;
-		case surfaceFitType::poly11:
-			dualSerial.print(surface.coefficients.a);
-			dualSerial.print("*x + ");
-			dualSerial.print(surface.coefficients.b);
-			dualSerial.print("*y + ");
-			dualSerial.print(surface.coefficients.c);
-			dualSerial.println();
-			break;
-		case surfaceFitType::poly22:
-			dualSerial.print(surface.coefficients.a);
-			dualSerial.print("*x^2 + ");
-			dualSerial.print(surface.coefficients.b);
-			dualSerial.print("*y^2 + ");
-			dualSerial.print(surface.coefficients.c);
-			dualSerial.print("*x*y + ");
-			dualSerial.print(surface.coefficients.d);
-			dualSerial.print("*x + ");
-			dualSerial.print(surface.coefficients.e);
-			dualSerial.print("*y + ");
-			dualSerial.print(surface.coefficients.g);
-			dualSerial.println();
-			break;
-		default:
-			dualSerial.print('\t\ta: ');
-			dualSerial.println(surface.coefficients.a);
-			dualSerial.print('\t\tb: ');
-			dualSerial.println(surface.coefficients.b);
-			dualSerial.print('\t\tc: ');
-			dualSerial.println(surface.coefficients.c);
-			dualSerial.print('\t\td: ');
-			dualSerial.println(surface.coefficients.d);
-			dualSerial.print('\t\te: ');
-			dualSerial.println(surface.coefficients.e);
-			dualSerial.print('\t\tg: ');
-			dualSerial.println(surface.coefficients.g);
-		}
-	}
-	else
-	{
-		dualSerial.println("Surface not yet created");
 	}
 }
 

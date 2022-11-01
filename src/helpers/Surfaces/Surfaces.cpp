@@ -183,3 +183,84 @@ void SurfaceData::performLeastSquaresOperation()
         break;
     }
 }
+
+void SurfaceData::printSurfaceCoefficients()
+{
+    if (operationCompleted)
+    {
+        dualSerial.println("Surface Info:");
+        dualSerial.print("\tValid Row Echelon Operation: ");
+        dualSerial.println(validReductionOperation ? "TRUE" : "FALSE");
+        dualSerial.print("\tValid Surface: ");
+        dualSerial.println(validSurface ? "TRUE" : "FALSE");
+        if (validSurface)
+        {
+            XYPoint minima = getLocalMinima();
+            dualSerial.println("\tMinima: ");
+            dualSerial.print("\t\tX Min: ");
+            dualSerial.println(minima.x);
+            dualSerial.print("\t\tY Min: ");
+            dualSerial.println(minima.y);
+        }
+        dualSerial.println("\tEquation: ");
+        dualSerial.print("\t\tz = ");
+        switch (fitType)
+        {
+        case surfaceFitType::poly12:
+        case surfaceFitType::poly21:
+            dualSerial.print(coefficients.a);
+            if (fitType == surfaceFitType::poly12)
+                dualSerial.print("*y^2 + ");
+            else
+                dualSerial.print("*x^2 + ");
+            dualSerial.print(coefficients.b);
+            dualSerial.print("*x*y + ");
+            dualSerial.print(coefficients.c);
+            dualSerial.print("*x + ");
+            dualSerial.print(coefficients.d);
+            dualSerial.print("*y + ");
+            dualSerial.print(coefficients.e);
+            dualSerial.println();
+            break;
+        case surfaceFitType::poly11:
+            dualSerial.print(coefficients.a);
+            dualSerial.print("*x + ");
+            dualSerial.print(coefficients.b);
+            dualSerial.print("*y + ");
+            dualSerial.print(coefficients.c);
+            dualSerial.println();
+            break;
+        case surfaceFitType::poly22:
+            dualSerial.print(coefficients.a);
+            dualSerial.print("*x^2 + ");
+            dualSerial.print(coefficients.b);
+            dualSerial.print("*y^2 + ");
+            dualSerial.print(coefficients.c);
+            dualSerial.print("*x*y + ");
+            dualSerial.print(coefficients.d);
+            dualSerial.print("*x + ");
+            dualSerial.print(coefficients.e);
+            dualSerial.print("*y + ");
+            dualSerial.print(coefficients.g);
+            dualSerial.println();
+            break;
+        default:
+            dualSerial.print('\t\ta: ');
+            dualSerial.println(coefficients.a);
+            dualSerial.print('\t\tb: ');
+            dualSerial.println(coefficients.b);
+            dualSerial.print('\t\tc: ');
+            dualSerial.println(coefficients.c);
+            dualSerial.print('\t\td: ');
+            dualSerial.println(coefficients.d);
+            dualSerial.print('\t\te: ');
+            dualSerial.println(coefficients.e);
+            dualSerial.print('\t\tg: ');
+            dualSerial.println(coefficients.g);
+        }
+    }
+    else
+    {
+        dualSerial.println("Surface not yet created");
+    }
+}

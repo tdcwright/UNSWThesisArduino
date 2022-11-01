@@ -121,7 +121,6 @@ public:
 	virtual void setState(ControlState newState);
 	void printHeader();
 	void printDeviceState();
-	void printSurfaceCoefficients();
 
 	void printHelp();
 	modeResult runMode();

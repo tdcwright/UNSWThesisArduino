@@ -125,6 +125,7 @@ public:
     XYPoint differentiateAtAPoint(XYPoint point);
 
     void performLeastSquaresOperation();
+    void printSurfaceCoefficients();
 };
 
 #endif
