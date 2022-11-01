@@ -153,10 +153,22 @@ void SurfaceData::performLeastSquaresOperation()
     AT = ~A;
     ATA = AT * A;
     ATB = AT * B;
-    auto ATA_decomp = ATA; // LUDecompose will destroy A here so we'll pass in a copy so we can refer back to A later
-    auto decomp = LUDecompose(ATA_decomp);
-    solvedMatrix = LUSolve(decomp, ATB);
+    int numTries = 0;
+    while (numTries < MAX_NUM_SURFACE_TRIES)
+    {
+        auto ATA_decomp = ATA; // LUDecompose will destroy A here so we'll pass in a copy so we can refer back to A later
+        auto decomp = LUDecompose(ATA_decomp);
+        solvedMatrix = LUSolve(decomp, ATB);
+        coefficients = SurfaceCoefficients(fitType, solvedMatrix);
+
+        if (checkValidSurface())
+            break;
+        else
+            Sleep(20);
+        numTries++;
+    }
     validReductionOperation = true;
+
 #else
     MMath.Transpose(A, AT);
     MMath.Multiply(AT, A, ATA);
@@ -164,23 +176,25 @@ void SurfaceData::performLeastSquaresOperation()
     MMath.Copy(ATA, solvedMatrix);
     MMath.setCol(solvedMatrix, fitTypeToNumVars(fitType), ATB);
     validReductionOperation = MMath.reducedRowEchelon(solvedMatrix);
+    coefficients = SurfaceCoefficients(fitType, solvedMatrix);
 #endif
 
-    coefficients = SurfaceCoefficients(fitType, solvedMatrix);
     operationCompleted = true;
 
+    validSurface = checkValidSurface();
+}
+
+bool SurfaceData::checkValidSurface()
+{
     switch (fitType)
     {
     case surfaceFitType::poly22:
-        validSurface = coefficients.a > 0 && coefficients.b > 0;
-        break;
+        return coefficients.a > 0 && coefficients.b > 0;
     case surfaceFitType::poly21:
     case surfaceFitType::poly12:
-        validSurface = coefficients.a > 0;
-        break;
+        return coefficients.a > 0;
     default:
-        validSurface = true;
-        break;
+        return true;
     }
 }
 
@@ -195,19 +209,22 @@ void SurfaceData::printSurfaceCoefficients()
         dualSerial.println(validSurface ? "TRUE" : "FALSE");
         if (validSurface)
         {
-            XYPoint minima = getLocalMinima();
-            dualSerial.println("\tMinima: ");
-            dualSerial.print("\t\tX Min: ");
-            dualSerial.println(minima.x);
-            dualSerial.print("\t\tY Min: ");
-            dualSerial.println(minima.y);
+            if (fitType == surfaceFitType::poly22)
+            {
+                XYPoint minima = getLocalMinima();
+                dualSerial.println("\tMinima: ");
+                dualSerial.print("\t\tX Min: ");
+                dualSerial.println(minima.x);
+                dualSerial.print("\t\tY Min: ");
+                dualSerial.println(minima.y);
+            }
         }
         else
         {
             dualSerial.println(BLAMatrixAsString(A, "A matrix"));
-            dualSerial.println(BLAMatrixAsString(B, "A matrix"));
-            dualSerial.println(BLAMatrixAsString(ATA, "A matrix"));
-            dualSerial.println(BLAMatrixAsString(ATB, "A matrix"));
+            dualSerial.println(BLAMatrixAsString(B, "B matrix"));
+            dualSerial.println(BLAMatrixAsString(ATA, "ATA matrix"));
+            dualSerial.println(BLAMatrixAsString(ATB, "ATB matrix"));
         }
         dualSerial.println("\tEquation: ");
         dualSerial.print("\t\tz = ");
@@ -283,11 +300,11 @@ String BLAMatrixAsString(BLA::Matrix<rows, cols> M, String title)
         os += "\n";
     }
 
-    os += '[';
+    os += "\t[";
 
     for (int i = 0; i < rows; i++)
     {
-        if (title.length() > 0)
+        if (i != 0 && title.length() > 0)
             os += "\t";
 
         os += '[';
@@ -299,6 +316,7 @@ String BLAMatrixAsString(BLA::Matrix<rows, cols> M, String title)
         }
 
         os += (i == rows - 1 ? ']' : ',');
+        os += "\n";
     }
 
     return os;

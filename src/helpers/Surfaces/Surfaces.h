@@ -10,6 +10,8 @@
 
 #define POSITION_SCALE_ADJUSTMENT 100.0
 
+#define MAX_NUM_SURFACE_TRIES 5
+
 #include "../MovePoints.h"
 
 #include "../../dualSerial/dualSerial.h"
@@ -90,6 +92,7 @@ private:
 #endif
 
     void incrementRow();
+    bool checkValidSurface();
 
 public:
 #if USING_BLA_LIBRARY

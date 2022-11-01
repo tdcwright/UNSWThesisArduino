@@ -92,10 +92,12 @@ protected:
 	bool checkbackCrossedAverage(CircularArray<float> &pastReadings, float &averageReadings);
 
 	// Runs gradient decent operation. RUNNING, FINISHED
-	actionState performGradDecent();
+	virtual actionState performGradDecent();
 	// Moves to positions. RUNNING, WAITING, FINISHED
 	actionState collectData();
 	virtual void storeCollectedData();
+
+	virtual void printSurface();
 
 	// Returns whether the gradient of the amplitude is low
 	bool isAmplitudeStable();
@@ -147,10 +149,19 @@ public:
 class GradientDecentModePoly21 : public GradientDecentModeBASE
 {
 protected:
+	SurfaceData surfacePOLY12;
+
 	// Performs gradient decent on the collected data. FINISHED, RUNNING
-	actionState goToNextPosition() { GradientDecentModeBASE::goToNextPosition(); };
+	SurfaceData surfacePOLY12;
+	actionState goToNextPosition();
 	// Adds a series of points to the move queue, centered around the current location;
 	void queueMovePoints();
+
+	// Runs gradient decent operation. RUNNING, FINISHED
+	virtual actionState performGradDecent();
+
+	virtual void storeCollectedData();
+	virtual void printSurface();
 
 public:
 	GradientDecentModePoly21(String *inputString, PositionController *positionController, Accelerometer *MPU9150) : GradientDecentModeBASE(inputString, positionController, MPU9150, surfaceFitType::poly21){};

@@ -540,6 +540,30 @@ void GradientDecentModeBASE::printDeviceState()
 	}
 }
 
+actionState GradientDecentModePoly22::goToNextPosition()
+{
+	if (!nextPostionFoundAndSet)
+	{
+		XYPoint localMinima = surface.getLocalMinima();
+		_positionController->setDesiredXY(localMinima);
+		nextPostionFoundAndSet = true;
+	}
+
+	if (_positionController->positionControl() == actionState::FINISHED)
+	{
+		nextPostionFoundAndSet = false;
+		return actionState::FINISHED;
+	}
+
+	return actionState::RUNNING;
+}
+
+template <int numVars, int numReadings>
+void GradientDecentModeBASE<numVars, numReadings>::printSurface()
+{
+	surface.printSurfaceCoefficients();
+}
+
 // POLY MODE DIFFERENCES
 
 void GradientDecentModePoly22::queueMovePoints()
@@ -613,6 +637,153 @@ void GradientDecentModePoly21::queueMovePoints()
 	pointQueue.enqueue(XYPoint(currX, currY));
 }
 
+actionState GradientDecentModePoly21::performGradDecent()
+{
+	// Set the next collect data points.
+	if (currAutoState == AutoState::waiting)
+	{
+		initialPosition = _positionController->getXYPosition();
+		queueMovePoints();
+		surface.reset();
+		surfacePOLY12.reset();
+		currAutoState = AutoState::collectingData;
+	}
+
+	if (currAutoState == AutoState::collectingData)
+	{
+		if (collectData() == actionState::FINISHED)
+		{
+
+			currAutoState = AutoState::movingToMinima;
+		}
+	}
+
+	if (currAutoState == AutoState::movingToMinima)
+	{
+
+		if (!surface.operationCompleted || !surfacePOLY12.operationCompleted)
+		{
+			surface.performLeastSquaresOperation();
+			surfacePOLY12.performLeastSquaresOperation();
+			if (!printedSurfaceState && (!surface.validReductionOperation ||
+										 !surface.validSurface ||
+										 !surfacePOLY12.validReductionOperation ||
+										 !surfacePOLY12.validSurface))
+			{
+				if (!surface.validReductionOperation)
+					dualSerial.println("*ERROR* Invalid Row Echelon Operation on POLY21");
+				if (!surface.validSurface)
+				{
+					dualSerial.println("*ERROR* Invalid Surface on POLY21");
+					surface.printSurfaceCoefficients();
+				}
+				if (!surfacePOLY12.validReductionOperation)
+					dualSerial.println("*ERROR* Invalid Row Echelon Operation on POLY12");
+				if (!surfacePOLY12.validSurface)
+				{
+					dualSerial.println("*ERROR* Invalid Surface on POLY12");
+					surfacePOLY12.printSurfaceCoefficients();
+				}
+			}
+
+			dualSerial.println("Competed surface operation");
+		}
+
+		if ((surface.validReductionOperation &&
+			 surface.validSurface))
+		{
+			if (!printedSurfaceState)
+			{
+				surface.printSurfaceCoefficients();
+				printedSurfaceState = true;
+			}
+
+			if (goToNextPosition() == actionState::FINISHED)
+				currAutoState = AutoState::finishedMoving;
+		}
+		else if (surfacePOLY12.validReductionOperation &&
+				 surfacePOLY12.validSurface)
+		{
+			if (!printedSurfaceState)
+			{
+				surfacePOLY12.printSurfaceCoefficients();
+				printedSurfaceState = true;
+			}
+
+			if (goToNextPosition() == actionState::FINISHED)
+				currAutoState = AutoState::finishedMoving;
+		}
+		else
+		{
+			if (!returningToCentre)
+			{
+				dualSerial.println("Invalid surface, moving to the centre and trying again");
+				returningToCentre = true;
+			}
+
+			_positionController->setDesiredX(0);
+			_positionController->setDesiredY(0);
+
+			if (_positionController->positionControl() == actionState::FINISHED)
+			{
+				returningToCentre = false;
+				dataCollectionIteration--; // undo last iteration
+				currAutoState = AutoState::waiting;
+				printedSurfaceState = false;
+			}
+		}
+	}
+
+	// In the case that have moved to end, and still vibrating
+	if (dataCollectionIteration > 0 && currAutoState == AutoState::finishedMoving)
+	{
+		// Finish even if not at minima
+		printingEachItter = false;
+		return actionState::FINISHED;
+
+		if (getEWMAAmplitudeValue() > STABLE_AMPLITUDE_THRESHOLD)
+		{
+			currAutoState = AutoState::waiting;
+		}
+		else
+		{
+			return actionState::FINISHED;
+		}
+	}
+
+	return actionState::RUNNING;
+}
+
+void GradientDecentModePoly21::storeCollectedData()
+{
+	XYPoint currPosition = _positionController->getXYPosition();
+	surfacePOLY12.addReadings(currPosition.x, currPosition.y, stabilisingEWMAAmplitude, AMPLITUDE_READINGS_NORMALISATION_POWER);
+	GradientDecentModeBASE::storeCollectedData();
+}
+
+actionState GradientDecentModePoly21::goToNextPosition()
+{
+	if (!nextPostionFoundAndSet)
+	{
+		XYPoint directionOfDecent(0, 0);
+		if (surface.validSurface)
+			directionOfDecent = surface.directionOfSteepestDecent(initialPosition);
+		else
+			directionOfDecent = surfacePOLY12.directionOfSteepestDecent(initialPosition);
+
+		_positionController->setDesiredXY(directionOfDecent);
+		nextPostionFoundAndSet = true;
+	}
+
+	if (_positionController->positionControl() == actionState::FINISHED)
+	{
+		nextPostionFoundAndSet = false;
+		return actionState::FINISHED;
+	}
+
+	return actionState::RUNNING;
+}
+
 void GradientDecentModePoly11::queueMovePoints()
 {
 	double currX = _positionController->getXPosition();
@@ -628,4 +799,12 @@ void GradientDecentModePoly11::queueMovePoints()
 	pointQueue.enqueue(XYPoint(currX, currY));
 	currX -= moveAmount;
 	pointQueue.enqueue(XYPoint(currX, currY));
+}
+
+void GradientDecentModePoly21::printSurface()
+{
+	dualSerial.println("Poly12 Surface:");
+	surfacePOLY12.printSurfaceCoefficients();
+	dualSerial.println("Poly21 Surface:");
+	surface.printSurfaceCoefficients();
 }
