@@ -22,7 +22,14 @@
     "functional": "cpp",
     "streambuf": "cpp",
     "tuple": "cpp",
-    "utility": "cpp"
+    "utility": "cpp",
+    "fstream": "cpp",
+    "initializer_list": "cpp",
+    "istream": "cpp",
+    "new": "cpp",
+    "ostream": "cpp",
+    "sstream": "cpp",
+    "stdexcept": "cpp"
   },
   "cmake.configureOnOpen": true
 }

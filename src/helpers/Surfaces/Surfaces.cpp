@@ -202,6 +202,13 @@ void SurfaceData::printSurfaceCoefficients()
             dualSerial.print("\t\tY Min: ");
             dualSerial.println(minima.y);
         }
+        else
+        {
+            dualSerial.println(BLAMatrixAsString(A, "A matrix"));
+            dualSerial.println(BLAMatrixAsString(B, "A matrix"));
+            dualSerial.println(BLAMatrixAsString(ATA, "A matrix"));
+            dualSerial.println(BLAMatrixAsString(ATB, "A matrix"));
+        }
         dualSerial.println("\tEquation: ");
         dualSerial.print("\t\tz = ");
         switch (fitType)
@@ -263,4 +270,36 @@ void SurfaceData::printSurfaceCoefficients()
     {
         dualSerial.println("Surface not yet created");
     }
+}
+
+template <int rows, int cols>
+String BLAMatrixAsString(BLA::Matrix<rows, cols> M, String title)
+{
+    String os;
+
+    if (title.length() > 0)
+    {
+        os += title;
+        os += "\n";
+    }
+
+    os += '[';
+
+    for (int i = 0; i < rows; i++)
+    {
+        if (title.length() > 0)
+            os += "\t";
+
+        os += '[';
+
+        for (int j = 0; j < cols; j++)
+        {
+            os += String(M(i, j));
+            os += ((j == cols - 1) ? ']' : ',');
+        }
+
+        os += (i == rows - 1 ? ']' : ',');
+    }
+
+    return os;
 }

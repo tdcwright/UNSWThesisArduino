@@ -19,6 +19,9 @@ extern DualSerial dualSerial;
 
 int fitTypeToNumVars(surfaceFitType fitType);
 
+template <int rows, int cols>
+String BLAMatrixAsString(BLA::Matrix<rows, cols> M, String title = "");
+
 // Surface coeffients in order (defined by surfaceFitType)
 struct SurfaceCoefficients
 {
