@@ -23,8 +23,8 @@ extern DualSerial dualSerial;
 #define INTEGRAL_ACTIVATION_DISTANCE 7.5
 #define MIN_POSITION_ERROR 0.1
 #define MIN_ITTERS_AT_POS 5
-#define DEFAULT_PROPORTIONAL_PARAM 12
-#define DEFAULT_INTEGRAL_PARAM 10
+#define DEFAULT_PROPORTIONAL_PARAM 15
+#define DEFAULT_INTEGRAL_PARAM 6
 
 #define DT_TIMEOUT_LIMIT 500           // Number of milliseconds before the position controller timer times out
 #define SINGLE_DIRECTION_MOTOR_HOLD 20 // Number of iteations a direction will hold to allow the other motor to take control

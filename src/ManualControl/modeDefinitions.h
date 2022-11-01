@@ -13,6 +13,7 @@ enum class controllerMode
   GRADIENT_DECENT_POLY21 = 7,
   GRADIENT_DECENT_POLY11 = 8,
   SLIDING_MODE = 9,
+  BROYDEN_MODE = 10,
   NO_CHANGE = -1
 };
 

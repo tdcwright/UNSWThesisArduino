@@ -1,6 +1,7 @@
 #include "manualControl.h"
 
 #include "modes/idleMode.h"
+#include "modes/autoModes/BroydenFunctionMode.h"
 #include "modes/autoModes/slidingModeControlMode.h"
 #include "modes/autoModes/gradientDecentMode.h"
 #include "modes/autoModes/positionControlMode.h"
@@ -59,6 +60,9 @@ void ManualController::setMode(controllerMode newMode, bool deletePrevious)
 		break;
 	case controllerMode::SLIDING_MODE:
 		modeController = new SlidingModeControlMode(&inputString, _positionController, _MPU9150);
+		break;
+	case controllerMode::BROYDEN_MODE:
+		modeController = new BroydenFunctionMode(&inputString, _positionController, _MPU9150);
 		break;
 	case controllerMode::POSITION_CONTROL:
 		modeController = new PositionControlMode(&inputString, _positionController, _MPU9150, _encoder);

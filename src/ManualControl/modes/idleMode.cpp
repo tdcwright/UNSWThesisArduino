@@ -33,6 +33,9 @@ controllerMode IdleMode::detectCommand()
             case 's':
                 return controllerMode::SLIDING_MODE;
                 break;
+            case 'b':
+                return controllerMode::BROYDEN_MODE;
+                break;
             default:
                 dualSerial.println("Invalid automatic controller mode");
                 break;
@@ -82,6 +85,7 @@ void IdleMode::printHelp()
     dualSerial.println("\th: Help");
     dualSerial.println("\tag[2/1/0]: Change to Gradient Decent Mode. 2: Poly22, 1: Poly21, 0: Poly11");
     dualSerial.println("\tas: Change to Sliding mode control mode");
+    dualSerial.println("\tab: Change to Broyden Function mode control mode");
     dualSerial.println("\tp: Change to Position Control Mode");
     dualSerial.println("\tg: Change to Gyro/Accelerometer Mode");
     dualSerial.println("\tm: Change to Motor Mode");

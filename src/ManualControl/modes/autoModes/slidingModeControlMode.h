@@ -55,9 +55,6 @@ protected:
 	// Based on where the massess currently is, determine a direction
 	short getDirectionGuess(chooseAxis currAxis);
 
-	// Converts current rev/s to move amount on linear scale
-	double RPSToMoveAmount();
-
 	virtual void setState(ControlState newState);
 	controllerMode detectCommand();
 

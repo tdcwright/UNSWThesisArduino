@@ -467,12 +467,13 @@ double GradientDecentModeBASE::getAlphaReadingsEWMA()
 
 double GradientDecentModeBASE::RPSToMoveAmount()
 {
-	// 2rpm: 20mm
-	//  4rpm: 10mm
-	//  5rpm:  5mm
+	// 2rps: 14mm
+	//  4rps: 8mm
+	//  5rps:  5mm
+
 	double currRotationRate = _MPU9150->getRotationRate();
 
-	return -5 * currRotationRate + 30;
+	return -3 * currRotationRate + 20;
 }
 
 void GradientDecentModeBASE::setState(ControlState newState)

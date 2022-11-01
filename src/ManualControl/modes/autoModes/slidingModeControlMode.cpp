@@ -264,13 +264,3 @@ short SlidingModeControlMode::getDirectionGuess(chooseAxis currAxis)
 
 	return direction;
 }
-
-double SlidingModeControlMode::RPSToMoveAmount()
-{
-	// 2rpm: 20mm
-	//  4rpm: 10mm
-	//  5rpm:  5mm
-	double currRotationRate = _MPU9150->getRotationRate();
-
-	return -5 * currRotationRate + 30;
-}
